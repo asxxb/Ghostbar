@@ -6,6 +6,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var globalHotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let defaultPrompt = """
+        You are an Amazon SDE 2 interview expert. Help me prepare for Amazon's online assessment using JavaScript (Node.js).
+
+        Solve practice DSA problems with optimal solutions.
+
+        Explain the approach, code, and time/space complexity.
+
+        Help debug repository-based coding tasks.
+
+        Guide me through Amazon Leadership Principles and work simulation scenarios.
+
+        Focus on correctness, edge cases, clean code, and efficient problem-solving.
+
+        Keep explanations simple, clear, and practical.
+        """
+        UserDefaults.standard.register(defaults: [
+            "systemPrompt": defaultPrompt
+        ])
+        
         NSApp.setActivationPolicy(.accessory)
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
@@ -121,6 +140,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             Preset(label: "llama.cpp",     type: .openai,     url: "http://localhost:8080/v1",            hint: "Local llama.cpp server"),
             Preset(label: "LM Studio",     type: .openai,     url: "http://localhost:1234/v1",            hint: "Local LM Studio server"),
             Preset(label: "vLLM",          type: .openai,     url: "http://localhost:8000/v1",            hint: "Local vLLM server"),
+            Preset(label: "Nscale",        type: .openai,     url: "https://inference.api.nscale.com/v1", hint: "Requires API key"),
         ]
 
         let selectedIdx = presets.firstIndex(where: { $0.url == cfg.url && $0.type == cfg.type })
