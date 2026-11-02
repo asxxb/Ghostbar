@@ -186,20 +186,17 @@ Hundreds of models (Llama, Mistral, Gemma, Qwen, DeepSeek) — no credit card re
 
 ## Voice input
 
+Ghostbar uses **Apple's native Speech Recognition** on-device by default — no extra downloads or terminal commands required.
+
+Press **🎙** or **⌘⌥** → speak → press again → transcribed into the prompt. Fully on-device.
+
+*(Optional)* If installed, `whisper.cpp` is also supported as an automatic fallback:
 ```bash
 brew install whisper-cpp
+mkdir -p /opt/homebrew/share/whisper-cpp
 curl -L -o /opt/homebrew/share/whisper-cpp/ggml-base.bin \
   https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
 ```
-
-Press **🎙** or **⌘⌥** → speak → press again → transcribed and sent. Fully on-device.
-
-| Model | Size | Quality |
-|---|---|---|
-| `tiny` | 75 MB | Fast |
-| `base` | 150 MB | Balanced ✓ |
-| `small` | 470 MB | Better |
-| `medium` | 1.5 GB | Best |
 
 ---
 
@@ -215,15 +212,26 @@ Works with any vision model: `llava`, `gpt-4o`, `gemma3`, `claude-opus-4-7`…
 
 ## Keyboard shortcuts
 
-| Action | Shortcut |
-|---|---|
-| Send message | **Enter** |
-| New line | **Shift+Enter** |
-| Voice input | **⌘⌥** |
-| Screenshot | **⌘⇧** |
-| Close | **Cmd+W** |
+Ghostbar is built to be 100% keyboard-navigable without touching the mouse:
 
-All shortcuts customizable in Settings.
+| Action | Shortcut | Description |
+|---|---|---|
+| **Send prompt** | `Enter` or `⌘Enter` | Sends the prompt |
+| **New line** | `Shift+Enter` | Inserts newline in prompt |
+| **Prompt history** | `↑` / `↓` | Recall previous prompts (like terminal) |
+| **Scroll chat up/down** | `PageUp` / `PageDown` | Smoothly scrolls chat messages (`Fn+↑` / `Fn+↓`) |
+| **Scroll chat up/down** | `⌘[` / `⌘]` or `Ctrl+U` / `Ctrl+D` | Alternative keyboard scroll without leaving input |
+| **Scroll to top / bottom** | `Home` / `End` | Jumps to start or end of chat (`Fn+←` / `Fn+→`) |
+| **Focus prompt input** | `/` or `⌘L` | Jumps straight to input from anywhere |
+| **Select model** | `⌘M` | Opens dropdown (navigate with `↑`/`↓`, `Enter` to select) |
+| **Clear / New chat** | `⌘K` | Resets the conversation |
+| **Stop AI response** | `Esc` or `⌘.` | Stops generating response |
+| **Copy last response** | `⌘⇧C` | Copies last AI reply to clipboard |
+| **Voice dictation** | `⌘⌥` | Toggles on-device voice recording |
+| **Screenshot capture** | `⌘⇧` | Captures screen context |
+| **Settings** | `⌘,` | Opens settings |
+| **Hide / Close window** | `Esc` (when empty) or `⌘W` | Dismisses Ghostbar |
+| **Toggle Ghostbar** | `⌘⌥M` | Global system hotkey to show/focus Ghostbar |
 
 ---
 

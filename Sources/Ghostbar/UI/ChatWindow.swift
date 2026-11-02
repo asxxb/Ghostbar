@@ -52,6 +52,10 @@ class ChatWindow: NSObject, NSWindowDelegate {
     func showAndFocus() {
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(webView.view)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.webView.view.evaluateJavaScript("window.focusInput && window.focusInput()", completionHandler: nil)
+        }
         window.sharingType = .none
     }
 

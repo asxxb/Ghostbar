@@ -55,8 +55,9 @@ html,body{height:100%;background:transparent;color:var(--text);
 #model-dropdown.open{display:block}
 .model-opt{padding:8px 14px;font-size:11.5px;cursor:pointer;color:var(--text);
   font-family:var(--font);transition:background .1s;white-space:nowrap}
-.model-opt:hover{background:var(--border)}
+.model-opt:hover, .model-opt.highlighted{background:var(--border)}
 .model-opt.active{color:var(--accent)}
+.model-opt.highlighted{outline:1px solid var(--accent);outline-offset:-1px}
 #msgs{flex:1;overflow-y:auto;padding:14px;scroll-behavior:smooth}
 #msgs::-webkit-scrollbar{width:3px}
 #msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -277,8 +278,46 @@ const modelName     = document.getElementById('model-name');
 const modelDropdown = document.getElementById('model-dropdown');
 const backendBadge  = document.getElementById('backend-badge');
 
-modelBtn.addEventListener('click', e => { e.stopPropagation(); modelDropdown.classList.toggle('open'); });
-document.addEventListener('click', () => modelDropdown.classList.remove('open'));
+let highlightedModelIndex = -1;
+
+function openModelDropdown() {
+  modelDropdown.classList.add('open');
+  const opts = modelDropdown.querySelectorAll('.model-opt');
+  highlightedModelIndex = Array.from(opts).findIndex(el => el.classList.contains('active'));
+  if (highlightedModelIndex === -1 && opts.length > 0) highlightedModelIndex = 0;
+  updateModelHighlight();
+}
+
+function closeModelDropdown() {
+  modelDropdown.classList.remove('open');
+  highlightedModelIndex = -1;
+  const opts = modelDropdown.querySelectorAll('.model-opt');
+  opts.forEach(el => el.classList.remove('highlighted'));
+}
+
+function updateModelHighlight() {
+  const opts = modelDropdown.querySelectorAll('.model-opt');
+  opts.forEach((el, idx) => {
+    el.classList.toggle('highlighted', idx === highlightedModelIndex);
+    if (idx === highlightedModelIndex) {
+      el.scrollIntoView({ block: 'nearest' });
+    }
+  });
+}
+
+function selectModelAtIndex(idx) {
+  const opts = modelDropdown.querySelectorAll('.model-opt');
+  if (idx >= 0 && idx < opts.length) {
+    opts[idx].click();
+  }
+}
+
+modelBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  if (modelDropdown.classList.contains('open')) closeModelDropdown();
+  else openModelDropdown();
+});
+document.addEventListener('click', () => closeModelDropdown());
 
 document.getElementById('close-btn').addEventListener('click', () => {
   window.webkit.messageHandlers.closeWindow.postMessage({});
@@ -286,6 +325,27 @@ document.getElementById('close-btn').addEventListener('click', () => {
 document.getElementById('settings-btn').addEventListener('click', () => {
   window.webkit.messageHandlers.openSettings.postMessage({});
 });
+
+// ── Focus & Scroll helpers ────────────────────────────────────────────────────
+function focusInput() {
+  const inp = document.getElementById('inp');
+  if (inp) { inp.focus(); }
+}
+window.focusInput = focusInput;
+window.addEventListener('focus', () => { focusInput(); });
+setTimeout(focusInput, 80);
+
+function scrollMessages(delta) {
+  const msgs = document.getElementById('msgs');
+  if (msgs) msgs.scrollBy({ top: delta, behavior: 'smooth' });
+}
+
+function scrollMessagesTo(pos) {
+  const msgs = document.getElementById('msgs');
+  if (!msgs) return;
+  if (pos === 'top') msgs.scrollTo({ top: 0, behavior: 'smooth' });
+  else if (pos === 'bottom') msgs.scrollTo({ top: msgs.scrollHeight, behavior: 'smooth' });
+}
 
 // ── Auto-scroll toggle ────────────────────────────────────────────────────────
 const autoscrollBtn = document.getElementById('autoscroll-btn');
@@ -338,11 +398,24 @@ function receiveModels(models, backend) {
   });
 }
 
-// ── Whisper ───────────────────────────────────────────────────────────────────
-function onWhisperStatus(hasBin, hasModel) {
+// ── Voice Status ──────────────────────────────────────────────────────────────
+function onVoiceStatus(hasSpeech, hasBin, hasModel) {
   const hint = document.getElementById('hint');
-  if (!hasBin) { hint.textContent = '⚠ whisper-cli not found. Install: brew install whisper-cpp'; hint.classList.add('visible'); }
-  else if (!hasModel) { hint.textContent = '⚠ Whisper model not found. Download ggml-base.bin to /opt/homebrew/share/whisper-cpp/'; hint.classList.add('visible'); }
+  if (hasSpeech || (hasBin && hasModel)) {
+    hint.classList.remove('visible');
+    return;
+  }
+  if (!hasBin) {
+    hint.textContent = '⚠ Voice input: enable Apple Speech in System Settings or install whisper-cpp';
+    hint.classList.add('visible');
+  } else if (!hasModel) {
+    hint.textContent = '⚠ Whisper model not found. Download ggml-base.bin to /opt/homebrew/share/whisper-cpp/';
+    hint.classList.add('visible');
+  }
+}
+
+function onWhisperStatus(hasBin, hasModel) {
+  onVoiceStatus(true, hasBin, hasModel);
 }
 
 // ── Mic ───────────────────────────────────────────────────────────────────────
@@ -390,6 +463,54 @@ function triggerCapture() {
   }
 }
 
+function stopStreaming() {
+  if (!streaming) return;
+  window.webkit.messageHandlers.stopStream.postMessage({});
+  streaming = false; busy = false;
+  if (currentBody) {
+    const raw = currentBody.textContent;
+    currentBody.classList.remove('cursor');
+    if (raw) {
+      currentBody.setAttribute('data-raw', raw);
+      currentBody.innerHTML = renderMarkdown(raw);
+      currentBody.classList.add('rendered');
+      addCodeCopyButtons(currentBody);
+      messages.push({role: 'assistant', content: raw});
+    } else {
+      messages.length = _messagesLenBeforeLastUser;
+    }
+    showStreamStats();
+  }
+  currentBody = null;
+  btn.textContent = '↵'; btn.classList.remove('stopping');
+}
+
+function clearConversation() {
+  if (streaming) stopStreaming();
+  messages = [];
+  document.getElementById('msgs').innerHTML = '';
+  clearScreenshotUI();
+  focusInput();
+}
+
+function copyLastResponse() {
+  const aiMsgs = document.querySelectorAll('.msg.ai');
+  if (!aiMsgs.length) return;
+  const last = aiMsgs[aiMsgs.length - 1];
+  const body = last.querySelector('.body');
+  if (!body) return;
+  const text = body.getAttribute('data-raw') || body.textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const copyBtn = last.querySelector('.copy-btn');
+    if (copyBtn) {
+      copyBtn.innerHTML = CHECK_ICON;
+      copyBtn.style.color = 'var(--accent)';
+      setTimeout(() => { copyBtn.innerHTML = COPY_ICON; copyBtn.style.color = ''; }, 1500);
+    }
+  });
+}
+
 document.addEventListener('keydown', e => {
   if (captureShortcut.key &&
       e.metaKey===captureShortcut.cmd && e.altKey===captureShortcut.opt &&
@@ -418,6 +539,180 @@ document.addEventListener('keydown', e => {
   } else {
     _scArmed = false; _scCapArmed = false;
   }
+
+  // Model dropdown navigation
+  if (modelDropdown.classList.contains('open')) {
+    const opts = modelDropdown.querySelectorAll('.model-opt');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (opts.length > 0) {
+        highlightedModelIndex = (highlightedModelIndex + 1) % opts.length;
+        updateModelHighlight();
+      }
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (opts.length > 0) {
+        highlightedModelIndex = (highlightedModelIndex - 1 + opts.length) % opts.length;
+        updateModelHighlight();
+      }
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      selectModelAtIndex(highlightedModelIndex);
+      closeModelDropdown();
+      focusInput();
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeModelDropdown();
+      focusInput();
+      return;
+    }
+  }
+
+  // Escape key: close dropdown -> stop streaming -> clear input -> close window
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (modelDropdown.classList.contains('open')) {
+      closeModelDropdown();
+      focusInput();
+      return;
+    }
+    if (streaming) {
+      stopStreaming();
+      focusInput();
+      return;
+    }
+    const inp = document.getElementById('inp');
+    if (document.activeElement === inp && inp.value.length > 0) {
+      inp.value = '';
+      inp.style.height = 'auto';
+      return;
+    }
+    window.webkit.messageHandlers.closeWindow.postMessage({});
+    return;
+  }
+
+  // Cmd+. : stop streaming
+  if (e.metaKey && e.key === '.') {
+    if (streaming) {
+      e.preventDefault();
+      stopStreaming();
+      focusInput();
+      return;
+    }
+  }
+
+  // Cmd+W : close window
+  if (e.metaKey && !e.shiftKey && e.key.toLowerCase() === 'w') {
+    e.preventDefault();
+    window.webkit.messageHandlers.closeWindow.postMessage({});
+    return;
+  }
+
+  // Cmd+, : open settings
+  if (e.metaKey && e.key === ',') {
+    e.preventDefault();
+    window.webkit.messageHandlers.openSettings.postMessage({});
+    return;
+  }
+
+  // Cmd+M : toggle model dropdown
+  if (e.metaKey && !e.shiftKey && e.key.toLowerCase() === 'm') {
+    e.preventDefault();
+    if (modelDropdown.classList.contains('open')) closeModelDropdown();
+    else openModelDropdown();
+    return;
+  }
+
+  // Cmd+K : clear chat
+  if (e.metaKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    clearConversation();
+    return;
+  }
+
+  // Cmd+L : focus input and select text
+  if (e.metaKey && !e.shiftKey && e.key.toLowerCase() === 'l') {
+    e.preventDefault();
+    focusInput();
+    const inp = document.getElementById('inp');
+    if (inp) inp.select();
+    return;
+  }
+
+  // / key : focus input if not currently typing in input
+  if (e.key === '/' && document.activeElement !== document.getElementById('inp')) {
+    e.preventDefault();
+    focusInput();
+    return;
+  }
+
+  // Cmd+Shift+C : copy last response
+  if (e.metaKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+    e.preventDefault();
+    copyLastResponse();
+    return;
+  }
+
+  // Scrolling chat history without mouse
+  if (e.key === 'PageUp') {
+    e.preventDefault();
+    scrollMessages(-220);
+    return;
+  }
+  if (e.key === 'PageDown') {
+    e.preventDefault();
+    scrollMessages(220);
+    return;
+  }
+  if (e.key === 'Home' && (document.activeElement !== document.getElementById('inp') || e.metaKey)) {
+    e.preventDefault();
+    scrollMessagesTo('top');
+    return;
+  }
+  if (e.key === 'End' && (document.activeElement !== document.getElementById('inp') || e.metaKey)) {
+    e.preventDefault();
+    scrollMessagesTo('bottom');
+    return;
+  }
+  if (e.metaKey && e.key === '[') {
+    e.preventDefault();
+    scrollMessages(-220);
+    return;
+  }
+  if (e.metaKey && e.key === ']') {
+    e.preventDefault();
+    scrollMessages(220);
+    return;
+  }
+  if (e.ctrlKey && e.key.toLowerCase() === 'u') {
+    e.preventDefault();
+    scrollMessages(-220);
+    return;
+  }
+  if (e.ctrlKey && e.key.toLowerCase() === 'd') {
+    e.preventDefault();
+    scrollMessages(220);
+    return;
+  }
+  if (e.altKey && !e.metaKey && !e.shiftKey && !e.ctrlKey) {
+    const inp = document.getElementById('inp');
+    if (e.key === 'ArrowUp' && (document.activeElement !== inp || inp.value === '')) {
+      e.preventDefault();
+      scrollMessages(-180);
+      return;
+    }
+    if (e.key === 'ArrowDown' && (document.activeElement !== inp || inp.value === '')) {
+      e.preventDefault();
+      scrollMessages(180);
+      return;
+    }
+  }
 });
 
 document.addEventListener('keyup', e => {
@@ -429,24 +724,7 @@ document.addEventListener('keyup', e => {
 btn.addEventListener('click', e => {
   e.preventDefault();
   if (streaming) {
-    window.webkit.messageHandlers.stopStream.postMessage({});
-    streaming = false; busy = false;
-    if (currentBody) {
-      const raw = currentBody.textContent;
-      currentBody.classList.remove('cursor');
-      if (raw) {
-        currentBody.setAttribute('data-raw', raw);
-        currentBody.innerHTML = renderMarkdown(raw);
-        currentBody.classList.add('rendered');
-        addCodeCopyButtons(currentBody);
-        messages.push({role: 'assistant', content: raw});
-      } else {
-        messages.length = _messagesLenBeforeLastUser;
-      }
-      showStreamStats();
-    }
-    currentBody = null;
-    btn.textContent = '↵'; btn.classList.remove('stopping');
+    stopStreaming();
     return;
   }
   send();
@@ -607,9 +885,18 @@ function onScreenshotError() {
   screenshotBtn.title = 'Screen capture failed — check System Settings > Privacy > Screen Recording';
 }
 
+let promptHistory = [];
+let historyIndex = -1;
+let currentDraft = '';
+
 function sendText(text, withScreenshot) {
   if (busy || !text) return;
   modelDropdown.classList.remove('open');
+  if (text && (!promptHistory.length || promptHistory[promptHistory.length - 1] !== text)) {
+    promptHistory.push(text);
+  }
+  historyIndex = -1;
+  currentDraft = '';
   const hasImg = !!(withScreenshot || hasScreenshot);
   addMsg('user').textContent = text + (hasImg ? ' 📎' : '');
   currentBody = addMsg('ai');
@@ -637,9 +924,55 @@ function send() {
   sendText(text);
 }
 
-document.getElementById('inp').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-  setTimeout(() => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 72) + 'px'; }, 0);
+const inp = document.getElementById('inp');
+inp.addEventListener('keydown', e => {
+  // Enter or Cmd+Enter to send
+  if ((e.key === 'Enter' && !e.shiftKey) || (e.key === 'Enter' && e.metaKey)) {
+    e.preventDefault();
+    send();
+    return;
+  }
+
+  // Prompt history navigation: ArrowUp
+  if (e.key === 'ArrowUp' && !e.shiftKey && !e.metaKey && !e.altKey && !e.ctrlKey) {
+    if (inp.selectionStart === 0 && inp.selectionEnd === 0 && promptHistory.length > 0) {
+      e.preventDefault();
+      if (historyIndex === -1) {
+        currentDraft = inp.value;
+        historyIndex = promptHistory.length - 1;
+      } else if (historyIndex > 0) {
+        historyIndex--;
+      }
+      inp.value = promptHistory[historyIndex];
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
+      inp.setSelectionRange(inp.value.length, inp.value.length);
+      return;
+    }
+  }
+
+  // Prompt history navigation: ArrowDown
+  if (e.key === 'ArrowDown' && !e.shiftKey && !e.metaKey && !e.altKey && !e.ctrlKey) {
+    if (historyIndex !== -1) {
+      e.preventDefault();
+      if (historyIndex < promptHistory.length - 1) {
+        historyIndex++;
+        inp.value = promptHistory[historyIndex];
+      } else {
+        historyIndex = -1;
+        inp.value = currentDraft;
+      }
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
+      inp.setSelectionRange(inp.value.length, inp.value.length);
+      return;
+    }
+  }
+
+  setTimeout(() => {
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
+  }, 0);
 });
 
 </script>

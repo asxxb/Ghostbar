@@ -35,7 +35,8 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
   <key>CFBundleIconFile</key><string>Ghostbar</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
-  <key>NSMicrophoneUsageDescription</key><string>Ghostbar needs the microphone to transcribe audio with Whisper.</string>
+  <key>NSMicrophoneUsageDescription</key><string>Ghostbar needs the microphone for voice transcription.</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>Ghostbar needs speech recognition to transcribe your voice.</string>
   <key>NSScreenCaptureUsageDescription</key><string>Ghostbar needs screen access to capture context for AI responses.</string>
   <key>NSAppTransportSecurity</key>
   <dict>

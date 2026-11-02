@@ -1,5 +1,6 @@
 import WebKit
 import AVFoundation
+import Speech
 
 class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
     let view: WKWebView
@@ -90,16 +91,38 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
 
     func requestMicAndRecord() {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized: startRecording()
+        case .authorized:
+            checkSpeechAuthAndRecord()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
-                if granted { DispatchQueue.main.async { self?.startRecording() } }
-                else { DispatchQueue.main.async {
-                    self?.view.evaluateJavaScript("onMicError('Microphone permission denied.')", completionHandler: nil)
-                }}
+                if granted {
+                    DispatchQueue.main.async { self?.checkSpeechAuthAndRecord() }
+                } else {
+                    DispatchQueue.main.async {
+                        self?.view.evaluateJavaScript("onMicError('Microphone permission denied.')", completionHandler: nil)
+                    }
+                }
             }
         default:
             view.evaluateJavaScript("onMicError('Microphone denied. Enable in System Settings > Privacy > Microphone.')", completionHandler: nil)
+        }
+    }
+
+    private func checkSpeechAuthAndRecord() {
+        if isAppleSpeechAvailable() {
+            SFSpeechRecognizer.requestAuthorization { [weak self] status in
+                DispatchQueue.main.async {
+                    if status == .authorized || status == .notDetermined {
+                        self?.startRecording()
+                    } else if findWhisperBin() != nil && findWhisperModel() != nil {
+                        self?.startRecording()
+                    } else {
+                        self?.view.evaluateJavaScript("onMicError('Speech recognition denied. Enable in System Settings > Privacy > Speech Recognition.')", completionHandler: nil)
+                    }
+                }
+            }
+        } else {
+            startRecording()
         }
     }
 
@@ -110,9 +133,10 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
     }
 
     func checkWhisperInstall() {
+        let hasSpeech = isAppleSpeechAvailable()
         let hasBin   = findWhisperBin() != nil
         let hasModel = findWhisperModel() != nil
-        view.evaluateJavaScript("onWhisperStatus(\(hasBin),\(hasModel))", completionHandler: nil)
+        view.evaluateJavaScript("onVoiceStatus(\(hasSpeech),\(hasBin),\(hasModel))", completionHandler: nil)
     }
 
     func sendSavedModel() {
