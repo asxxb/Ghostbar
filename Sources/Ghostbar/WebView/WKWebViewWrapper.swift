@@ -16,7 +16,7 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
         view = WKWebView(frame: frame, configuration: config)
         view.setValue(false, forKey: "drawsBackground")
         super.init()
-        for name in ["sendMessage","loadModels","startRecording","stopRecording","stopStream","checkWhisper","closeWindow","captureScreen","clearScreenshot","initModel","openSettings"] {
+        for name in ["sendMessage","loadModels","startRecording","stopRecording","stopStream","checkWhisper","closeWindow","captureScreen","clearScreenshot","initModel","openSettings","getPhoneQR"] {
             cc.add(self, name: name)
         }
         loadHTML()
@@ -31,7 +31,12 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
                   let model = body["model"] as? String else { return }
             let useScreenshot = (body["screenshot"] as? NSNumber)?.boolValue == true
             let img = useScreenshot ? storedScreenshot : nil
+            if let lastUser = messages.last?["content"] as? String {
+                (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "user", data: lastUser)
+            }
             streamResponse(messages: messages, model: model, image: img)
+        case "getPhoneQR":
+            sendPhoneQR()
         case "captureScreen":
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 guard let self = self else { return }
@@ -307,6 +312,59 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
         let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
         currentStreamSession = session
         session.dataTask(with: req).resume()
+    }
+
+    func sendPhoneQR() {
+        let ip = getLocalIPAddress() ?? "127.0.0.1"
+        let url = "http://\(ip):8765"
+        let qr = generateQRCodeBase64(from: url) ?? ""
+        DispatchQueue.main.async {
+            self.view.evaluateJavaScript("setPhoneQR('\(url)', '\(qr)')", completionHandler: nil)
+        }
+    }
+
+    func sendFromRemote(text: String, screenshot: Bool) {
+        let esc = text.replacingOccurrences(of: "\\", with: "\\\\")
+                      .replacingOccurrences(of: "`", with: "\\`")
+                      .replacingOccurrences(of: "$", with: "\\$")
+        DispatchQueue.main.async {
+            self.view.evaluateJavaScript("sendFromRemote(`\(esc)`, \(screenshot))", completionHandler: nil)
+        }
+    }
+
+    func typeFromRemote(text: String) {
+        let esc = text.replacingOccurrences(of: "\\", with: "\\\\")
+                      .replacingOccurrences(of: "`", with: "\\`")
+                      .replacingOccurrences(of: "$", with: "\\$")
+        DispatchQueue.main.async {
+            self.view.evaluateJavaScript("typeFromRemote(`\(esc)`)", completionHandler: nil)
+        }
+    }
+
+    func triggerCapture() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            if let b64 = captureScreenBase64() {
+                self.storedScreenshot = b64
+                DispatchQueue.main.async { self.view.evaluateJavaScript("onScreenshotCaptured()", completionHandler: nil) }
+            } else {
+                DispatchQueue.main.async { self.view.evaluateJavaScript("onScreenshotError()", completionHandler: nil) }
+            }
+        }
+    }
+
+    func stopFromRemote() {
+        currentStreamSession?.invalidateAndCancel()
+        currentStreamSession = nil
+        DispatchQueue.main.async {
+            self.view.evaluateJavaScript("stopStreaming()", completionHandler: nil)
+        }
+    }
+
+    func clearFromRemote() {
+        DispatchQueue.main.async {
+            self.view.evaluateJavaScript("clearConversation()", completionHandler: nil)
+        }
     }
 
     func loadHTML() { view.loadHTMLString(chatHTML(), baseURL: nil) }

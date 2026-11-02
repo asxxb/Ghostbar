@@ -1,4 +1,5 @@
 import WebKit
+import AppKit
 
 class StreamDelegate: NSObject, URLSessionDataDelegate {
     let webView: WKWebView
@@ -33,6 +34,7 @@ class StreamDelegate: NSObject, URLSessionDataDelegate {
                     .replacingOccurrences(of: "$", with: "\\$")
                 DispatchQueue.main.async {
                     self.webView.evaluateJavaScript("appendToken(`\(escaped)`)", completionHandler: nil)
+                    (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "token", data: token)
                 }
             }
         }
@@ -53,8 +55,10 @@ class StreamDelegate: NSObject, URLSessionDataDelegate {
                 let esc = m.replacingOccurrences(of: "\\", with: "\\\\")
                            .replacingOccurrences(of: "'", with: "\\'")
                 self.webView.evaluateJavaScript("appendToken('\(esc)')", completionHandler: nil)
+                (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "token", data: m)
             }
             self.webView.evaluateJavaScript("endStream(\(isError))", completionHandler: nil)
+            (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "end", data: "{}")
         }
     }
 }

@@ -136,6 +136,34 @@ html,body{height:100%;background:transparent;color:var(--text);
   color:var(--muted);line-height:0;padding:0 4px;cursor:pointer;
   transition:color .15s,transform .3s;-webkit-app-region:no-drag}
 #settings-btn:hover{color:var(--text);transform:rotate(45deg)}
+
+#phone-btn{-webkit-appearance:none;appearance:none;background:none;
+  border:1px solid var(--border);color:var(--muted);
+  font-family:var(--font);font-size:12px;padding:1px 5px;border-radius:3px;
+  cursor:pointer;transition:all .15s;line-height:1.4}
+#phone-btn:hover{border-color:var(--text);color:var(--text)}
+#phone-btn.active{border-color:var(--accent);color:var(--accent)}
+
+#phone-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(18,20,24,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  z-index:1000;align-items:center;justify-content:center}
+#phone-modal.open{display:flex}
+#phone-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:16px;width:280px;box-shadow:0 12px 32px rgba(0,0,0,.5);
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+#phone-card-header{width:100%;display:flex;align-items:center;justify-content:space-between;
+  color:var(--text);border-bottom:1px solid var(--border);padding-bottom:8px}
+#phone-close-btn{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1}
+#phone-close-btn:hover{color:var(--error)}
+#qr-wrap{background:#ffffff;padding:8px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+#qr-img{width:150px;height:150px;image-rendering:pixelated;display:block}
+#phone-url-box{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.3);
+  border:1px solid var(--border);border-radius:5px;padding:4px 8px;width:100%}
+#phone-url-text{flex:1;font-size:11px;color:var(--accent);font-family:var(--font);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;user-select:all}
+#phone-copy-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px}
+#phone-copy-btn:hover{color:var(--text)}
+#phone-card-hint{font-size:10px;color:var(--muted);line-height:1.4}
 </style>
 </head>
 <body>
@@ -153,9 +181,31 @@ html,body{height:100%;background:transparent;color:var(--text);
       <span id="backend-badge">ollama</span>
     </div>
     <div style="display:flex;align-items:center;gap:4px;-webkit-app-region:no-drag">
+      <button id="phone-btn" title="Phone Remote Keyboard (⌘P)">📱</button>
       <button id="autoscroll-btn" title="Auto-scroll">↓</button>
       <button id="settings-btn" title="Settings"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <button id="close-btn" title="Close">×</button>
+    </div>
+  </div>
+  <div id="phone-modal">
+    <div id="phone-card">
+      <div id="phone-card-header">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:14px">📱</span>
+          <span style="font-weight:600;font-size:11.5px">Phone Remote Keyboard</span>
+        </div>
+        <button id="phone-close-btn" title="Close">×</button>
+      </div>
+      <div id="qr-wrap">
+        <img id="qr-img" src="" alt="Scan QR code" />
+      </div>
+      <div id="phone-url-box">
+        <span id="phone-url-text">Loading…</span>
+        <button id="phone-copy-btn" title="Copy URL">📋</button>
+      </div>
+      <div id="phone-card-hint">
+        Scan with your phone's camera (iPhone or Android) to type directly into Ghostbar.
+      </div>
     </div>
   </div>
   <div id="msgs"></div>
@@ -325,6 +375,64 @@ document.getElementById('close-btn').addEventListener('click', () => {
 document.getElementById('settings-btn').addEventListener('click', () => {
   window.webkit.messageHandlers.openSettings.postMessage({});
 });
+
+// ── Phone Remote ──────────────────────────────────────────────────────────────
+function setPhoneQR(url, qrB64) {
+  const urlText = document.getElementById('phone-url-text');
+  const qrImg = document.getElementById('qr-img');
+  if (urlText) urlText.textContent = url;
+  if (qrImg) qrImg.src = qrB64;
+}
+
+function togglePhoneModal(open) {
+  const modal = document.getElementById('phone-modal');
+  const btn = document.getElementById('phone-btn');
+  const willOpen = open !== undefined ? open : !modal.classList.contains('open');
+  modal.classList.toggle('open', willOpen);
+  if (btn) btn.classList.toggle('active', willOpen);
+  if (willOpen) {
+    window.webkit.messageHandlers.getPhoneQR.postMessage({});
+  }
+}
+
+document.getElementById('phone-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  togglePhoneModal();
+});
+document.getElementById('phone-close-btn').addEventListener('click', () => togglePhoneModal(false));
+document.getElementById('phone-modal').addEventListener('click', e => {
+  if (e.target.id === 'phone-modal') togglePhoneModal(false);
+});
+document.getElementById('phone-copy-btn').addEventListener('click', () => {
+  const u = document.getElementById('phone-url-text').textContent;
+  if (u && u !== 'Loading…') {
+    navigator.clipboard.writeText(u);
+    const b = document.getElementById('phone-copy-btn');
+    b.textContent = '✓';
+    setTimeout(() => { b.textContent = '📋'; }, 1500);
+  }
+});
+
+function sendFromRemote(text, withScreenshot) {
+  const inp = document.getElementById('inp');
+  inp.value = text;
+  inp.style.height = 'auto';
+  inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
+  if (withScreenshot) {
+    sendText(text, true);
+  } else {
+    send();
+  }
+}
+
+function typeFromRemote(text) {
+  const inp = document.getElementById('inp');
+  if (inp) {
+    inp.value = text;
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
+  }
+}
 
 // ── Focus & Scroll helpers ────────────────────────────────────────────────────
 function focusInput() {
@@ -574,9 +682,15 @@ document.addEventListener('keydown', e => {
     }
   }
 
-  // Escape key: close dropdown -> stop streaming -> clear input -> close window
+  // Escape key: close phone modal -> close dropdown -> stop streaming -> clear input -> close window
   if (e.key === 'Escape') {
     e.preventDefault();
+    const phoneModal = document.getElementById('phone-modal');
+    if (phoneModal && phoneModal.classList.contains('open')) {
+      togglePhoneModal(false);
+      focusInput();
+      return;
+    }
     if (modelDropdown.classList.contains('open')) {
       closeModelDropdown();
       focusInput();
@@ -594,6 +708,13 @@ document.addEventListener('keydown', e => {
       return;
     }
     window.webkit.messageHandlers.closeWindow.postMessage({});
+    return;
+  }
+
+  // Cmd+P : toggle phone remote keyboard modal
+  if (e.metaKey && !e.shiftKey && e.key.toLowerCase() === 'p') {
+    e.preventDefault();
+    togglePhoneModal();
     return;
   }
 

@@ -4,6 +4,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem?
     var chatWindow: ChatWindow?
     var globalHotKey: GlobalHotKey?
+    var remoteServer: RemoteServer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let defaultPrompt = """
@@ -36,6 +37,36 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             atPath: NSHomeDirectory() + "/.ollama-chat",
             withIntermediateDirectories: true)
         globalHotKey = GlobalHotKey { [weak self] in self?.hotKeyToggleChat() }
+        setupRemoteServer()
+        remoteServer?.start()
+    }
+
+    func setupRemoteServer() {
+        remoteServer = RemoteServer(port: 8765)
+        remoteServer?.onSend = { [weak self] text, screenshot in
+            if self?.chatWindow == nil { self?.chatWindow = ChatWindow() }
+            self?.chatWindow?.showAndFocus()
+            self?.chatWindow?.webView.sendFromRemote(text: text, screenshot: screenshot)
+        }
+        remoteServer?.onType = { [weak self] text in
+            self?.chatWindow?.webView.typeFromRemote(text: text)
+        }
+        remoteServer?.onScreenshot = { [weak self] in
+            self?.chatWindow?.webView.triggerCapture()
+        }
+        remoteServer?.onStop = { [weak self] in
+            self?.chatWindow?.webView.stopFromRemote()
+        }
+        remoteServer?.onClear = { [weak self] in
+            self?.chatWindow?.webView.clearFromRemote()
+        }
+        remoteServer?.getStatus = {
+            return [
+                "active": true,
+                "port": 8765,
+                "ip": getLocalIPAddress() ?? "127.0.0.1"
+            ]
+        }
     }
 
     func hotKeyToggleChat() {
@@ -74,6 +105,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         openItem.target = self
         openItem.isEnabled = true
         menu.addItem(openItem)
+        let phoneItem = NSMenuItem(title: "Phone Remote…", action: #selector(openPhoneRemote), keyEquivalent: "p")
+        phoneItem.target = self
+        phoneItem.isEnabled = true
+        menu.addItem(phoneItem)
         menu.addItem(.separator())
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(configureBackend), keyEquivalent: "")
         settingsItem.target = self
@@ -94,6 +129,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func toggleChat() {
         if chatWindow == nil { chatWindow = ChatWindow() }
         chatWindow?.showAndFocus()
+    }
+
+    @objc func openPhoneRemote() {
+        if chatWindow == nil { chatWindow = ChatWindow() }
+        chatWindow?.showAndFocus()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.chatWindow?.webView.view.evaluateJavaScript("togglePhoneModal(true)", completionHandler: nil)
+        }
     }
 
     @objc func configureBackend() {

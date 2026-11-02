@@ -210,6 +210,18 @@ Works with any vision model: `llava`, `gpt-4o`, `gemma3`, `claude-opus-4-7`…
 
 ---
 
+## Phone Remote Keyboard
+
+Connect your phone's keyboard directly to Ghostbar:
+
+1. Click **📱** in the Ghostbar header or press **⌘P** to display your local QR code and URL.
+2. Scan the QR code with your iPhone or Android camera (or open `http://<mac-ip>:8765`).
+3. Type using your phone's software keyboard, swipe typing, or phone dictation (🎙).
+4. Tap **Send** to deliver the prompt straight into Ghostbar on your Mac.
+5. *(Optional)* Toggle **🕶 Stealth Mode** on the phone to keep answers on your Mac display only, or stream them live to your phone screen.
+
+---
+
 ## Keyboard shortcuts
 
 Ghostbar is built to be 100% keyboard-navigable without touching the mouse:
@@ -224,6 +236,7 @@ Ghostbar is built to be 100% keyboard-navigable without touching the mouse:
 | **Scroll to top / bottom** | `Home` / `End` | Jumps to start or end of chat (`Fn+←` / `Fn+→`) |
 | **Focus prompt input** | `/` or `⌘L` | Jumps straight to input from anywhere |
 | **Select model** | `⌘M` | Opens dropdown (navigate with `↑`/`↓`, `Enter` to select) |
+| **Phone Remote** | `⌘P` | Displays Phone Remote QR code & link |
 | **Clear / New chat** | `⌘K` | Resets the conversation |
 | **Stop AI response** | `Esc` or `⌘.` | Stops generating response |
 | **Copy last response** | `⌘⇧C` | Copies last AI reply to clipboard |
