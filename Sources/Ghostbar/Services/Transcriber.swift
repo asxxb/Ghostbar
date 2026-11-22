@@ -51,6 +51,10 @@ func transcribeWithAppleSpeech(audioURL: URL, completion: @escaping (String?) ->
 
         let request = SFSpeechURLRecognitionRequest(url: audioURL)
         request.shouldReportPartialResults = false
+        request.taskHint = .dictation
+        if #available(macOS 13, *) {
+            request.addsPunctuation = true
+        }
         if recognizer.supportsOnDeviceRecognition {
             request.requiresOnDeviceRecognition = true
         }
@@ -70,6 +74,10 @@ func transcribeWithAppleSpeech(audioURL: URL, completion: @escaping (String?) ->
                     // Try fallback without requiring on-device in case asset is not installed locally
                     let fallbackReq = SFSpeechURLRecognitionRequest(url: audioURL)
                     fallbackReq.shouldReportPartialResults = false
+                    fallbackReq.taskHint = .dictation
+                    if #available(macOS 13, *) {
+                        fallbackReq.addsPunctuation = true
+                    }
                     fallbackReq.requiresOnDeviceRecognition = false
                     recognizer.recognitionTask(with: fallbackReq) { res2, err2 in
                         if finished { return }

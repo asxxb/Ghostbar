@@ -79,8 +79,9 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
                     (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "transcription", data: text)
                     DispatchQueue.main.async {
                         let esc = text.replacingOccurrences(of: "\\", with: "\\\\")
-                                      .replacingOccurrences(of: "'", with: "\\'")
-                        self.view.evaluateJavaScript("onTranscription('\(esc)')", completionHandler: nil)
+                                      .replacingOccurrences(of: "`", with: "\\`")
+                                      .replacingOccurrences(of: "$", with: "\\$")
+                        self.view.evaluateJavaScript("onTranscription(`\(esc)`)", completionHandler: nil)
                     }
                 } else if let url = url {
                     DispatchQueue.main.async { self.view.evaluateJavaScript("onTranscribing()", completionHandler: nil) }
@@ -91,8 +92,9 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
                         DispatchQueue.main.async {
                             if let t = text {
                                 let esc = t.replacingOccurrences(of: "\\", with: "\\\\")
-                                           .replacingOccurrences(of: "'", with: "\\'")
-                                self?.view.evaluateJavaScript("onTranscription('\(esc)')", completionHandler: nil)
+                                           .replacingOccurrences(of: "`", with: "\\`")
+                                           .replacingOccurrences(of: "$", with: "\\$")
+                                self?.view.evaluateJavaScript("onTranscription(`\(esc)`)", completionHandler: nil)
                             } else {
                                 self?.view.evaluateJavaScript("onTranscription(null)", completionHandler: nil)
                             }

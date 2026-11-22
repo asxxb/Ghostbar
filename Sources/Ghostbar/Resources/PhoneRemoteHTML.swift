@@ -295,14 +295,21 @@ function connectSSE() {
     sendBtn.classList.remove('stopping');
   });
 
+  let micPreText = '';
   es.addEventListener('micState', e => {
     const recording = e.data === 'true';
+    if (recording) {
+      micPreText = inp.value.trim();
+    } else {
+      micPreText = '';
+    }
     updateVoiceUI(recording);
   });
 
   es.addEventListener('liveSpeech', e => {
     if (e.data && e.data.trim()) {
-      inp.value = e.data.trim();
+      const combined = micPreText ? (micPreText + ' ' + e.data.trim()) : e.data.trim();
+      inp.value = combined;
       inp.style.height = 'auto';
       inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
     }
@@ -310,10 +317,12 @@ function connectSSE() {
 
   es.addEventListener('transcription', e => {
     if (e.data && e.data.trim()) {
-      inp.value = e.data.trim();
+      const combined = micPreText ? (micPreText + ' ' + e.data.trim()) : e.data.trim();
+      inp.value = combined;
       inp.style.height = 'auto';
       inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
     }
+    micPreText = '';
   });
 }
 connectSSE();

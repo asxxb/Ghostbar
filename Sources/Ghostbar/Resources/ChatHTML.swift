@@ -543,8 +543,12 @@ function shortcutLabel() {
   return s || '—';
 }
 
+let micPreText = '';
+
 function toggleMic() {
   if (micState === 'idle') {
+    const inp = document.getElementById('inp');
+    micPreText = inp.value.trim();
     micState = 'recording';
     micBtn.classList.add('recording');
     micBtn.title = 'Stop (' + shortcutLabel() + ')';
@@ -854,12 +858,19 @@ btn.addEventListener('click', e => {
   send();
 });
 
-function onRecordingStarted() { micState = 'recording'; }
+function onRecordingStarted() {
+  micState = 'recording';
+  micBtn.classList.add('recording');
+  micBtn.title = 'Stop (' + shortcutLabel() + ')';
+  const inp = document.getElementById('inp');
+  micPreText = inp.value.trim();
+}
 
 function onLiveSpeech(text) {
   if (text && text.trim()) {
     const inp = document.getElementById('inp');
-    inp.value = text.trim();
+    const combined = micPreText ? (micPreText + ' ' + text.trim()) : text.trim();
+    inp.value = combined;
     inp.style.height = 'auto';
     inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
   }
@@ -879,11 +890,13 @@ function onTranscription(text) {
   micBtn.title = 'Record (' + shortcutLabel() + ')';
   if (text && text.trim()) {
     const inp = document.getElementById('inp');
-    inp.value = text.trim();
+    const combined = micPreText ? (micPreText + ' ' + text.trim()) : text.trim();
+    inp.value = combined;
     inp.style.height = 'auto';
     inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
     inp.focus();
   }
+  micPreText = '';
 }
 
 function onMicError(msg) {
@@ -891,6 +904,7 @@ function onMicError(msg) {
   micBtn.classList.remove('recording','transcribing');
   micBtn.textContent = '🎙';
   micBtn.title = 'Record (' + shortcutLabel() + ')';
+  micPreText = '';
   addMsg('err').textContent = msg;
 }
 
