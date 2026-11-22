@@ -72,21 +72,29 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
         case "stopRecording":
             guard isRecording else { return }
             isRecording = false
-            recorder.onDone = { [weak self] url in
-                guard let self = self, let url = url else {
-                    DispatchQueue.main.async { self?.view.evaluateJavaScript("onTranscription(null)", completionHandler: nil) }
-                    return
-                }
-                DispatchQueue.main.async { self.view.evaluateJavaScript("onTranscribing()", completionHandler: nil) }
-                transcribe(audioURL: url) { [weak self] text in
+            recorder.onFinalResult = { [weak self] liveText, url in
+                guard let self = self else { return }
+                if let text = liveText, !text.isEmpty {
                     DispatchQueue.main.async {
-                        if let t = text {
-                            let esc = t.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
-                            self?.view.evaluateJavaScript("onTranscription('\(esc)')", completionHandler: nil)
-                        } else {
-                            self?.view.evaluateJavaScript("onTranscription(null)", completionHandler: nil)
+                        let esc = text.replacingOccurrences(of: "\\", with: "\\\\")
+                                      .replacingOccurrences(of: "'", with: "\\'")
+                        self.view.evaluateJavaScript("onTranscription('\(esc)')", completionHandler: nil)
+                    }
+                } else if let url = url {
+                    DispatchQueue.main.async { self.view.evaluateJavaScript("onTranscribing()", completionHandler: nil) }
+                    transcribe(audioURL: url) { [weak self] text in
+                        DispatchQueue.main.async {
+                            if let t = text {
+                                let esc = t.replacingOccurrences(of: "\\", with: "\\\\")
+                                           .replacingOccurrences(of: "'", with: "\\'")
+                                self?.view.evaluateJavaScript("onTranscription('\(esc)')", completionHandler: nil)
+                            } else {
+                                self?.view.evaluateJavaScript("onTranscription(null)", completionHandler: nil)
+                            }
                         }
                     }
+                } else {
+                    DispatchQueue.main.async { self.view.evaluateJavaScript("onTranscription(null)", completionHandler: nil) }
                 }
             }
             recorder.stop()
@@ -133,6 +141,14 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
 
     func startRecording() {
         isRecording = true
+        recorder.onLiveText = { [weak self] text in
+            DispatchQueue.main.async {
+                let esc = text.replacingOccurrences(of: "\\", with: "\\\\")
+                              .replacingOccurrences(of: "`", with: "\\`")
+                              .replacingOccurrences(of: "$", with: "\\$")
+                self?.view.evaluateJavaScript("onLiveSpeech(`\(esc)`)", completionHandler: nil)
+            }
+        }
         recorder.start()
         view.evaluateJavaScript("onRecordingStarted()", completionHandler: nil)
     }

@@ -856,6 +856,15 @@ btn.addEventListener('click', e => {
 
 function onRecordingStarted() { micState = 'recording'; }
 
+function onLiveSpeech(text) {
+  if (text && text.trim()) {
+    const inp = document.getElementById('inp');
+    inp.value = text.trim();
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
+  }
+}
+
 function onTranscribing() {
   micState = 'transcribing';
   micBtn.classList.remove('recording');

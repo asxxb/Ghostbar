@@ -20,7 +20,7 @@ func findWhisperModel() -> String? {
         NSHomeDirectory() + "/.cache/whisper",
         NSHomeDirectory() + "/.ollama-chat",
     ]
-    let preferred = ["ggml-base.en.bin","ggml-base.bin","ggml-small.bin","ggml-tiny.bin","ggml-medium.bin"]
+    let preferred = ["ggml-tiny.en.bin","ggml-base.en.bin","ggml-base.bin","ggml-small.en.bin","ggml-tiny.bin","ggml-medium.bin"]
     for dir in dirs {
         for name in preferred {
             let p = dir + "/" + name
@@ -42,7 +42,7 @@ func transcribeWithAppleSpeech(audioURL: URL, completion: @escaping (String?) ->
             return
         }
 
-        let recognizer = SFSpeechRecognizer(locale: Locale.current) ?? SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+        let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
         guard let recognizer = recognizer, recognizer.isAvailable else {
             print("[speech] Recognizer not available")
             completion(nil)
@@ -98,7 +98,7 @@ func transcribeWithWhisper(audioURL: URL, completion: @escaping (String?) -> Voi
     print("[whisper] \(bin) model=\(model)")
     let task = Process()
     task.executableURL = URL(fileURLWithPath: bin)
-    task.arguments = ["--model", model, "--language", "auto", "--output-txt", "--no-prints", "--file", audioURL.path]
+    task.arguments = ["--model", model, "--language", "en", "--output-txt", "--no-prints", "--file", audioURL.path]
     let pipe = Pipe()
     task.standardOutput = pipe; task.standardError = Pipe()
     task.terminationHandler = { _ in
