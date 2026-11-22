@@ -56,7 +56,75 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
 /* Input area */
 #bottom{background:var(--surface);border-top:1px solid var(--border);padding:10px 14px 14px;flex-shrink:0}
-#input-wrap{display:flex;flex-direction:column;gap:8px}
+#input-wrap{display:flex;flex-direction:column;gap:10px}
+
+/* Big Voice Button */
+.big-voice-btn{
+  width:100%;
+  padding:14px 18px;
+  background:linear-gradient(135deg, rgba(74,222,128,0.16), rgba(74,222,128,0.06));
+  border:1.5px solid var(--accent);
+  border-radius:12px;
+  color:var(--accent);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  transition:all .2s ease;
+  user-select:none;
+  -webkit-user-select:none;
+  box-shadow:0 4px 16px rgba(0,0,0,0.25);
+}
+.big-voice-btn:active{
+  transform:scale(0.98);
+  opacity:0.9;
+}
+.big-voice-btn.recording{
+  background:linear-gradient(135deg, rgba(248,113,113,0.3), rgba(248,113,113,0.12));
+  border-color:var(--error);
+  color:#ff9898;
+  animation:voicePulse 1.2s ease-in-out infinite;
+}
+@keyframes voicePulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,0.45)}
+  50%{box-shadow:0 0 0 10px rgba(248,113,113,0)}
+}
+.voice-mic-icon{
+  font-size:24px;
+  line-height:1;
+  display:inline-block;
+  transition:transform .2s;
+}
+.big-voice-btn.recording .voice-mic-icon{
+  animation:micPop .6s ease infinite alternate;
+}
+@keyframes micPop{
+  from{transform:scale(1)}
+  to{transform:scale(1.25)}
+}
+.voice-text-group{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  text-align:left;
+}
+.voice-title{
+  font-family:var(--font-mono);
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:-0.01em;
+}
+.voice-sub{
+  font-family:var(--font-sans);
+  font-size:11px;
+  color:var(--muted);
+  opacity:0.85;
+}
+.big-voice-btn.recording .voice-sub{
+  color:#ffcaca;
+}
+
 #phone-inp{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--font-sans);font-size:15px;line-height:1.45;padding:10px 12px;resize:none;outline:none;caret-color:var(--accent);max-height:120px;min-height:48px;-webkit-appearance:none}
 #phone-inp:focus{border-color:var(--accent)}
 #phone-inp::placeholder{color:var(--muted)}
@@ -96,7 +164,16 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--f
 
   <div id="bottom">
     <div id="input-wrap">
-      <textarea id="phone-inp" placeholder="Type prompt or tap 🎙 dictation on keyboard..." rows="2"></textarea>
+      <!-- Big Prominent Voice Control Button -->
+      <button id="voice-btn" class="big-voice-btn" type="button">
+        <span class="voice-mic-icon">🎙</span>
+        <div class="voice-text-group">
+          <span id="voice-title" class="voice-title">Tap to Speak</span>
+          <span id="voice-sub" class="voice-sub">Live English Voice to Text</span>
+        </div>
+      </button>
+
+      <textarea id="phone-inp" placeholder="Type prompt or tap 🎙 Speak above..." rows="2"></textarea>
       <div id="toolbar">
         <div id="toolbar-left">
           <button id="screenshot-btn" class="tool-btn">📷 Screen</button>
@@ -123,6 +200,27 @@ const inp = document.getElementById('phone-inp');
 const sendBtn = document.getElementById('send-btn');
 const screenshotBtn = document.getElementById('screenshot-btn');
 const clearBtn = document.getElementById('clear-btn');
+const voiceBtn = document.getElementById('voice-btn');
+const voiceTitle = document.getElementById('voice-title');
+const voiceSub = document.getElementById('voice-sub');
+let isRecordingVoice = false;
+
+function updateVoiceUI(recording) {
+  isRecordingVoice = recording;
+  voiceBtn.classList.toggle('recording', recording);
+  if (recording) {
+    voiceTitle.textContent = '🔴 Listening…';
+    voiceSub.textContent = 'Speak in English (Tap to Finish)';
+  } else {
+    voiceTitle.textContent = '🎙 Tap to Speak';
+    voiceSub.textContent = 'Live English Voice to Text';
+  }
+}
+
+voiceBtn.addEventListener('click', () => {
+  vibrate(25);
+  fetch('/api/voice', {method: 'POST'}).catch(() => {});
+});
 
 function updateStealthUI() {
   stealthBtn.classList.toggle('active', stealthMode);
@@ -195,6 +293,27 @@ function connectSSE() {
     streaming = false;
     sendBtn.textContent = '↵ Send';
     sendBtn.classList.remove('stopping');
+  });
+
+  es.addEventListener('micState', e => {
+    const recording = e.data === 'true';
+    updateVoiceUI(recording);
+  });
+
+  es.addEventListener('liveSpeech', e => {
+    if (e.data && e.data.trim()) {
+      inp.value = e.data.trim();
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
+    }
+  });
+
+  es.addEventListener('transcription', e => {
+    if (e.data && e.data.trim()) {
+      inp.value = e.data.trim();
+      inp.style.height = 'auto';
+      inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
+    }
   });
 }
 connectSSE();

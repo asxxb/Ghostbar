@@ -60,6 +60,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         remoteServer?.onClear = { [weak self] in
             self?.chatWindow?.webView.clearFromRemote()
         }
+        remoteServer?.onToggleVoice = { [weak self] in
+            if self?.chatWindow == nil { self?.chatWindow = ChatWindow() }
+            self?.chatWindow?.webView.toggleVoiceRecording()
+        }
         remoteServer?.getStatus = {
             return [
                 "active": true,

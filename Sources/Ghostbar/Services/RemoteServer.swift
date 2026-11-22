@@ -59,6 +59,7 @@ class RemoteServer {
     var onScreenshot: (() -> Void)?
     var onClear: (() -> Void)?
     var onStop: (() -> Void)?
+    var onToggleVoice: (() -> Void)?
     var getStatus: (() -> [String: Any])?
 
     init(port: UInt16 = 8765) {
@@ -246,6 +247,12 @@ class RemoteServer {
                     self.onType?(text)
                 }
             }
+            self.sendHTTPResponse(connection: connection, status: "200 OK", contentType: "application/json", body: "{\"ok\":true}")
+            return
+        }
+
+        if method == "POST" && path == "/api/voice" {
+            DispatchQueue.main.async { self.onToggleVoice?() }
             self.sendHTTPResponse(connection: connection, status: "200 OK", contentType: "application/json", body: "{\"ok\":true}")
             return
         }

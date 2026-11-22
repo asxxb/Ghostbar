@@ -72,9 +72,11 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
         case "stopRecording":
             guard isRecording else { return }
             isRecording = false
+            (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "micState", data: "false")
             recorder.onFinalResult = { [weak self] liveText, url in
                 guard let self = self else { return }
                 if let text = liveText, !text.isEmpty {
+                    (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "transcription", data: text)
                     DispatchQueue.main.async {
                         let esc = text.replacingOccurrences(of: "\\", with: "\\\\")
                                       .replacingOccurrences(of: "'", with: "\\'")
@@ -83,6 +85,9 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
                 } else if let url = url {
                     DispatchQueue.main.async { self.view.evaluateJavaScript("onTranscribing()", completionHandler: nil) }
                     transcribe(audioURL: url) { [weak self] text in
+                        if let t = text {
+                            (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "transcription", data: t)
+                        }
                         DispatchQueue.main.async {
                             if let t = text {
                                 let esc = t.replacingOccurrences(of: "\\", with: "\\\\")
@@ -141,7 +146,9 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
 
     func startRecording() {
         isRecording = true
+        (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "micState", data: "true")
         recorder.onLiveText = { [weak self] text in
+            (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "liveSpeech", data: text)
             DispatchQueue.main.async {
                 let esc = text.replacingOccurrences(of: "\\", with: "\\\\")
                               .replacingOccurrences(of: "`", with: "\\`")
@@ -151,6 +158,16 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
         }
         recorder.start()
         view.evaluateJavaScript("onRecordingStarted()", completionHandler: nil)
+    }
+
+    func toggleVoiceRecording() {
+        DispatchQueue.main.async {
+            if self.isRecording {
+                self.view.evaluateJavaScript("toggleMic()", completionHandler: nil)
+            } else {
+                self.requestMicAndRecord()
+            }
+        }
     }
 
     func checkWhisperInstall() {
