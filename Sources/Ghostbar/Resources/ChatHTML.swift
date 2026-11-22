@@ -12,6 +12,9 @@ func chatHTML() -> String { return """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+*,*::before,*::after,html,body,input,textarea,button,select,a,pre,code,div,span{cursor:default !important}
+::selection{background:rgba(74,222,128,0.28);color:inherit}
+::-moz-selection{background:rgba(74,222,128,0.28);color:inherit}
 :root{
   --bg:rgba(28,30,36,0.55);--surface:rgba(41,44,51,0.7);--border:rgba(255,255,255,0.08);
   --text:#d1d1d6;--muted:#6b6b7a;--accent:#4ade80;
@@ -68,7 +71,7 @@ html,body{height:100%;background:transparent;color:var(--text);
 .msg.user .lbl{color:var(--user)}
 .msg.ai .lbl{color:var(--accent)}
 .msg.err .lbl{color:var(--error)}
-.body{white-space:pre-wrap;word-break:break-word}
+.body{white-space:pre-wrap;word-break:break-word;user-select:text;-webkit-user-select:text}
 .body.rendered{white-space:normal}
 .body.rendered h1{font-size:1.15em;font-weight:600;margin:10px 0 4px;color:#e5e5ea}
 .body.rendered h2{font-size:1.05em;font-weight:600;margin:8px 0 3px;color:#e5e5ea}
