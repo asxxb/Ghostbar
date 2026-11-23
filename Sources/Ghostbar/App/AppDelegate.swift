@@ -31,7 +31,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         - For greetings/test prompts ("hi", "test"), reply in 1 brief sentence.
         """
         UserDefaults.standard.register(defaults: [
-            "systemPrompt": defaultPrompt
+            "systemPrompt": defaultPrompt,
+            "screenshotPrompt": "Read the question, task, or code shown on this screen and provide the direct, optimal answer and solution."
         ])
         
         NSApp.setActivationPolicy(.accessory)
@@ -486,7 +487,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         sysRow.addArrangedSubview(sysLabel)
         sysRow.addArrangedSubview(sysScroll)
 
-        let shotDefaultText = "Look at this screenshot. Find any programming problem, error, or bug and explain how to fix it."
+        let shotDefaultText = "Read the question, task, or code shown on this screen and provide the direct, optimal answer and solution."
         let shotLabel = NSTextField(labelWithString: "Screenshot prompt:")
         shotLabel.font = NSFont.systemFont(ofSize: 11)
         let shotDefaultBtn = NSButton(title: "Default", target: nil, action: nil)

@@ -418,12 +418,16 @@ document.getElementById('phone-copy-btn').addEventListener('click', () => {
 
 function sendFromRemote(text, withScreenshot) {
   const inp = document.getElementById('inp');
-  inp.value = text;
-  inp.style.height = 'auto';
-  inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
+  let promptText = (text || '').trim();
   if (withScreenshot) {
-    sendText(text, true);
+    if (!promptText) promptText = screenshotPrompt || 'Read the question, task, or code shown on this screen and provide the direct, optimal answer and solution.';
+    inp.value = '';
+    inp.style.height = 'auto';
+    sendText(promptText, true);
   } else {
+    inp.value = promptText;
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 72) + 'px';
     send();
   }
 }
@@ -1065,7 +1069,7 @@ function sendText(text, withScreenshot) {
 function send() {
   const inp = document.getElementById('inp');
   let text = inp.value.trim();
-  if (!text && hasScreenshot) text = screenshotPrompt || 'Look at this screenshot. Find any programming problem, error, or bug and explain how to fix it.';
+  if (!text && hasScreenshot) text = screenshotPrompt || 'Read the question, task, or code shown on this screen and provide the direct, optimal answer and solution.';
   if (!text) return;
   inp.value = ''; inp.style.height = 'auto';
   sendText(text);
