@@ -238,7 +238,17 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let models = json["data"] as? [[String: Any]] else { return }
-            let names = models.compactMap { $0["id"] as? String }.sorted()
+            let names = models.compactMap { $0["id"] as? String }
+                .filter { id in
+                    let lower = id.lowercased()
+                    return !lower.contains("embed") &&
+                           !lower.contains("rerank") &&
+                           !lower.contains("moderation") &&
+                           !lower.contains("dall-e") &&
+                           !lower.contains("whisper") &&
+                           !lower.contains("tts")
+                }
+                .sorted()
             DispatchQueue.main.async {
                 self.view.evaluateJavaScript("receiveModels(\(jsonString(names)),'openai')", completionHandler: nil)
             }
@@ -253,7 +263,17 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let models = json["data"] as? [[String: Any]] else { return }
-            let names = models.compactMap { $0["id"] as? String }.sorted()
+            let names = models.compactMap { $0["id"] as? String }
+                .filter { id in
+                    let lower = id.lowercased()
+                    return !lower.contains("embed") &&
+                           !lower.contains("rerank") &&
+                           !lower.contains("moderation") &&
+                           !lower.contains("dall-e") &&
+                           !lower.contains("whisper") &&
+                           !lower.contains("tts")
+                }
+                .sorted()
             DispatchQueue.main.async {
                 self.view.evaluateJavaScript("receiveModels(\(jsonString(names)),'openai')", completionHandler: nil)
             }
