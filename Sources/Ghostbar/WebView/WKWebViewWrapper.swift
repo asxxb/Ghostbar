@@ -411,6 +411,7 @@ class WKWebViewWrapper: NSObject, WKScriptMessageHandler {
     func stopFromRemote() {
         currentStreamSession?.invalidateAndCancel()
         currentStreamSession = nil
+        (NSApp.delegate as? AppDelegate)?.remoteServer?.broadcast(event: "end", data: "{}")
         DispatchQueue.main.async {
             self.view.evaluateJavaScript("stopStreaming()", completionHandler: nil)
         }
